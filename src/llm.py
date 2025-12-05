@@ -11,6 +11,13 @@ from openai import OpenAI
 
 from prompts import SYSTEM_PROMPT, build_user_prompt
 
+# LLM generation parameters
+LLM_TEMPERATURE = 0.3
+LLM_MAX_TOKENS = 16000
+
+# Cost estimation multiplier (assumes output ~2x input tokens)
+COST_ESTIMATION_OUTPUT_MULTIPLIER = 2
+
 # Pricing per 1M tokens (as of 2024)
 MODEL_PRICING = {
     "gpt-4o": {"input": 2.50, "output": 10.00},
@@ -44,7 +51,7 @@ def estimate_cost(user_story: str, glossary: str | None, instructions: str | Non
     user_prompt = build_user_prompt(user_story, glossary, instructions)
     total_text = SYSTEM_PROMPT + user_prompt
     input_tokens = count_tokens(total_text, model)
-    estimated_output = input_tokens * 2  # Rough estimate
+    estimated_output = input_tokens * COST_ESTIMATION_OUTPUT_MULTIPLIER
 
     pricing = MODEL_PRICING.get(model, MODEL_PRICING["gpt-4o"])
     input_cost = (input_tokens / 1_000_000) * pricing["input"]
@@ -118,8 +125,8 @@ def generate_test_cases(
     response = client.chat.completions.create(
         model=model,
         messages=messages,
-        temperature=0.3,
-        max_tokens=16000,
+        temperature=LLM_TEMPERATURE,
+        max_tokens=LLM_MAX_TOKENS,
     )
 
     # Extract usage and cost

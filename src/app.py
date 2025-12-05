@@ -1,6 +1,7 @@
 # ABOUTME: Streamlit UI for the Universal Testbook Generator.
 # ABOUTME: Single-page app that generates manual test cases from user stories.
 
+import logging
 import os
 
 import pandas as pd
@@ -11,6 +12,15 @@ from openai import OpenAI, APIError, AuthenticationError, RateLimitError
 from llm import AVAILABLE_MODELS, estimate_cost, generate_test_cases
 from excel_export import create_testbook_excel, generate_filename
 from default_glossary import DEFAULT_GLOSSARY
+from validation import (
+    ValidationError,
+    read_and_validate_images,
+    MAX_USER_STORY_CHARS,
+    MAX_GLOSSARY_CHARS,
+    MAX_INSTRUCTIONS_CHARS,
+)
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -50,6 +60,7 @@ def main():
         label="User Story",
         placeholder="Paste your user story, requirements, or feature description here...",
         height=250,
+        max_chars=MAX_USER_STORY_CHARS,
         label_visibility="collapsed",
     )
 
@@ -58,6 +69,7 @@ def main():
         label="Glossary",
         value=DEFAULT_GLOSSARY,
         height=200,
+        max_chars=MAX_GLOSSARY_CHARS,
         label_visibility="collapsed",
     )
 
@@ -66,6 +78,7 @@ def main():
         label="Instructions",
         placeholder="Optional: Specific testing focus, areas to emphasize, special requirements...",
         height=100,
+        max_chars=MAX_INSTRUCTIONS_CHARS,
         label_visibility="collapsed",
     )
 
@@ -114,10 +127,14 @@ def main():
     # Generate button
     generate_disabled = not user_story.strip()
     if st.button("🚀 Generate Test Cases", disabled=generate_disabled, type="primary", use_container_width=True):
-        # Read image bytes if uploaded
+        # Validate and read images
         image_bytes = None
         if uploaded_files:
-            image_bytes = [f.read() for f in uploaded_files]
+            try:
+                image_bytes = read_and_validate_images(uploaded_files)
+            except ValidationError as e:
+                st.error(f"❌ {e}")
+                st.stop()
 
         with st.spinner("Generating test cases..."):
             try:
@@ -130,19 +147,26 @@ def main():
                     images=image_bytes,
                 )
                 st.session_state.generated_data = result
+            except ValidationError as e:
+                st.error(f"❌ {e}")
             except AuthenticationError:
                 st.error("❌ Invalid OpenAI API key. Check your .env file.")
             except RateLimitError:
                 st.error("⏳ Rate limit exceeded. Please wait and try again.")
             except APIError as e:
-                if "timeout" in str(e).lower():
+                error_str = str(e).lower()
+                if "timeout" in error_str:
                     st.error("⏱️ Request timed out. Try a shorter user story or try again.")
+                elif "context_length" in error_str or "too long" in error_str:
+                    st.error("❌ Input too long for model. Try a shorter user story.")
                 else:
-                    st.error(f"❌ API error: {e}")
+                    logger.error(f"OpenAI API error: {e}")
+                    st.error("❌ API error occurred. Please try again.")
             except ValueError as e:
                 st.error(f"❌ {e}")
             except Exception as e:
-                st.error(f"❌ Unexpected error: {e}")
+                logger.exception("Unexpected error during generation")
+                st.error("❌ An unexpected error occurred. Please try again.")
 
     # --- Results Section ---
     if st.session_state.generated_data:
