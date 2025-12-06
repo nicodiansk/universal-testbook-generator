@@ -33,6 +33,60 @@ st.set_page_config(
 )
 
 
+def get_allowed_emails() -> list[str]:
+    """Get allowed emails from secrets or environment."""
+    # Try Streamlit secrets first
+    try:
+        emails = st.secrets.get("allowed_emails", [])
+        if isinstance(emails, str):
+            emails = [e.strip() for e in emails.split(",")]
+        return emails
+    except Exception:
+        pass
+
+    # Fall back to environment variable
+    env_emails = os.getenv("ALLOWED_EMAILS", "")
+    if env_emails:
+        return [e.strip() for e in env_emails.split(",")]
+
+    return []
+
+
+def check_authentication() -> bool:
+    """Check if user is authenticated via email."""
+    # Initialize session state
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    if "user_email" not in st.session_state:
+        st.session_state.user_email = None
+
+    # If already authenticated, return True
+    if st.session_state.authenticated:
+        return True
+
+    # Show login form
+    st.title("🔐 Authentication Required")
+    st.markdown("Please enter your authorized email to access the Universal Testbook Generator.")
+
+    with st.form("login_form"):
+        email = st.text_input("Email Address", placeholder="your.email@si2001.it")
+        submitted = st.form_submit_button("Sign In", use_container_width=True)
+
+        if submitted:
+            email = email.strip().lower()
+            allowed_emails = get_allowed_emails()
+
+            if email in allowed_emails:
+                st.session_state.authenticated = True
+                st.session_state.user_email = email
+                st.rerun()
+            else:
+                st.error("❌ Access denied. Your email is not authorized.")
+                st.stop()
+
+    return False
+
+
 def get_openai_client() -> OpenAI | None:
     """Get OpenAI client from API key (checks Streamlit secrets first, then .env)."""
     # Check Streamlit secrets first (for cloud deployment)
@@ -48,6 +102,18 @@ def get_openai_client() -> OpenAI | None:
 
 
 def main():
+    # Check authentication first
+    if not check_authentication():
+        st.stop()
+
+    # Add logout button in sidebar
+    with st.sidebar:
+        st.write(f"👤 Signed in as: **{st.session_state.user_email}**")
+        if st.button("🚪 Sign Out", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.user_email = None
+            st.rerun()
+
     st.title("🧪 Universal Testbook Generator")
 
     # Check API key
