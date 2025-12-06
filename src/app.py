@@ -34,8 +34,14 @@ st.set_page_config(
 
 
 def get_openai_client() -> OpenAI | None:
-    """Get OpenAI client from API key."""
-    api_key = os.getenv("OPENAI_API_KEY")
+    """Get OpenAI client from API key (checks Streamlit secrets first, then .env)."""
+    # Check Streamlit secrets first (for cloud deployment)
+    api_key = st.secrets.get("OPENAI_API_KEY")
+
+    # Fall back to environment variable (for local .env)
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+
     if not api_key:
         return None
     return OpenAI(api_key=api_key)
