@@ -34,20 +34,21 @@ st.set_page_config(
 
 
 def get_allowed_emails() -> list[str]:
-    """Get allowed emails from secrets or environment."""
+    """Get allowed emails from secrets or environment (normalized to lowercase)."""
     # Try Streamlit secrets first
     try:
         emails = st.secrets.get("allowed_emails", [])
         if isinstance(emails, str):
             emails = [e.strip() for e in emails.split(",")]
-        return emails
-    except Exception:
+        return [e.lower() for e in emails]
+    except (KeyError, AttributeError):
+        # Secrets not configured
         pass
 
     # Fall back to environment variable
     env_emails = os.getenv("ALLOWED_EMAILS", "")
     if env_emails:
-        return [e.strip() for e in env_emails.split(",")]
+        return [e.strip().lower() for e in env_emails.split(",")]
 
     return []
 
@@ -68,13 +69,19 @@ def check_authentication() -> bool:
     st.title("🔐 Authentication Required")
     st.markdown("Please enter your authorized email to access the Universal Testbook Generator.")
 
+    # Check if allowed emails are configured
+    allowed_emails = get_allowed_emails()
+    if not allowed_emails:
+        st.error("⚠️ Authentication is misconfigured. No allowed emails found.")
+        st.info("Please configure `allowed_emails` in Streamlit secrets or `ALLOWED_EMAILS` in .env")
+        st.stop()
+
     with st.form("login_form"):
-        email = st.text_input("Email Address", placeholder="your.email@si2001.it")
+        email = st.text_input("Email Address", placeholder="your.email@example.com")
         submitted = st.form_submit_button("Sign In", use_container_width=True)
 
         if submitted:
             email = email.strip().lower()
-            allowed_emails = get_allowed_emails()
 
             if email in allowed_emails:
                 st.session_state.authenticated = True

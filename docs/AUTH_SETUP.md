@@ -14,10 +14,9 @@ OPENAI_API_KEY = "sk-..."
 
 # Allowed emails
 allowed_emails = [
-    "nicola.facchetti@si2001.it",
-    "giuseppe.ferrauto@si2001.it",
-    "andrea.rota@si2001.it",
-    "andrea.ravasio@si2001.it"
+    "user1@example.com",
+    "user2@example.com",
+    "admin@example.com"
 ]
 ```
 
@@ -66,7 +65,7 @@ allowed_emails = [
 ## Security Notes
 
 - This is a **simple email whitelist**, not password-based authentication
-- Suitable for trusted internal users (SI2001 team)
+- Suitable for trusted internal users only
 - Not suitable for public-facing apps or untrusted users
 - Email addresses are stored in session state, not logged
 - For production apps with untrusted users, consider OAuth2 or proper authentication
