@@ -12,8 +12,9 @@ Paste a user story → get a comprehensive Excel testbook with step-by-step test
 # 1. Install deps
 pip install -r requirements.txt
 
-# 2. Add your OpenAI key to .env
-echo "OPENAI_API_KEY=sk-..." > .env
+# 2. Configure authentication and API key
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# Edit .streamlit/secrets.toml with your OpenAI key and allowed emails
 
 # 3. Run
 cd src && streamlit run app.py
@@ -21,14 +22,18 @@ cd src && streamlit run app.py
 
 Open http://localhost:8501
 
+**Note:** The app requires email authentication. See [docs/AUTH_SETUP.md](docs/AUTH_SETUP.md) for setup instructions.
+
 ## Features
 
+- **Email authentication** - whitelist-based access control for authorized users
 - **Single-page UI** - no complexity, just works
 - **OpenAI models** - gpt-4o, gpt-4o-mini, gpt-4-turbo
 - **Multimodal** - upload UI mockups (auto-switches to gpt-4o)
 - **Cost transparency** - estimate before, actual after
 - **Excel export** - styled testbook ready for QA execution
 - **Domain glossary** - pre-loaded terminology for context
+- **Input validation** - image verification, size limits, sanitized error messages
 
 ## How it works
 
@@ -42,22 +47,34 @@ Open http://localhost:8501
 
 ```
 src/
-├── app.py              # Streamlit UI
+├── app.py              # Streamlit UI with authentication
 ├── llm.py              # OpenAI wrapper + token counting
 ├── prompts.py          # QA engineer system prompt
 ├── excel_export.py     # Styled Excel generation
+├── validation.py       # Input validation & security
 └── default_glossary.py # Domain terminology
+
+tests/
+├── test_llm.py         # LLM module tests
+├── test_excel_export.py # Excel generation tests
+└── test_validation.py  # Validation tests
 ```
 
 ## Requirements
 
 - Python 3.9+
 - OpenAI API key
+- Configured allowed emails (for authentication)
 
 ## Roadmap
 
-This is a simple demo. Future ideas:
-- [ ] Better prompt tuning for granular test cases
+This is a simple demo. Recent improvements:
+- [x] Better prompt tuning for granular test cases (15-30 TCs per story)
+- [x] Email authentication for access control
+- [x] Input validation and security hardening
+- [x] Unit test coverage (39 tests)
+
+Future ideas:
 - [ ] Support for Anthropic Claude
 - [ ] RAG with project documentation
 - [ ] Test case categorization
